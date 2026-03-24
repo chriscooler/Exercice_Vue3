@@ -33,6 +33,38 @@
 
 ---
 
+## Exercise 04 — Your First Component (`04_index.html`)
+
+**Key concepts:**
+- Components registered under the `components` key in the app options object
+- Custom elements (`<app-button>`) map to registered component names (kebab-case)
+- This exercise sets up the shell — the component registration is intentionally left empty as a starting point
+
+---
+
+## Exercise 05 — One Component Per File (`05_index.html` + [components/AppButton.js](components/AppButton.js))
+
+**Key concepts:**
+- Exporting a component as a plain JS object with `export default { ... }` (no build step required)
+- Importing a component via ES module `import` in a `<script type="module">` block
+- `<slot />` — renders whatever content the parent passes between the component tags (like `<app-button>PARIS</app-button>`)
+- Component `data()` for local reactive state (e.g. `processing: true` to drive a disabled state)
+- Separating components into their own files under a `components/` directory for organisation
+
+---
+
+## Exercise 06 — Component Props & Dynamic Classes (`06_index.html` + [components/AppButton.js](components/AppButton.js))
+
+**Key concepts:**
+- `props` — declaring inputs a component accepts from the parent (e.g. `type`, `processing`)
+- `:class` with an object — keys are class strings, values are conditions; only truthy entries are applied
+- Outside of `:class` binding you can pass a plain object `{ 'class-name': condition }` directly
+- `is-processing` class conditionally adds a CSS spinner via `::before` pseudo-element — only applied when `processing === true`
+- `position: relative` on the button is required so the `position: absolute` spinner is contained within it
+- `:disabled="processing"` — disables the button natively while processing
+
+---
+
 ## Vue 3 Quick Reference
 
 | Concept | Syntax |

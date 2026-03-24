@@ -20,3 +20,8 @@ dist/
 # Todo files
 Todo*.html
 todo*.html
+
+# VsCode
+.vscode/
+.hintrc
+

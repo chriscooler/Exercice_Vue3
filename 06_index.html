@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Ep 6, Component Props</title>
+<style>
+        @keyframes spinner {
+        to {
+            transform: rotate(360deg);
+        }
+        }
+        
+        .is-processing::before {
+        content: "";
+        box-sizing: border-box;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 32px;
+        height: 32px;
+        margin-top: -16px;
+        margin-left: -16px;
+        border-radius: 50%;
+        border: 1px solid #ccc;
+        border-top-color: #07d;
+        animation: spinner 600ms linear infinite;
+        }
+</style>
+
+</head>
+
+<body class="h-full grid place-items-center">
+    <div id="app">
+        <app-button type="primary" :processing="true">BONJOUR-</app-button>
+        <app-button type="secondary" :processing="false">MONCŒUR-</app-button>
+        <app-button type="success" :processing="false">BAGUETTE-</app-button>
+        <app-button type="danger" :processing="false">PARIS</app-button>
+    </div>
+
+    <script type="module">
+
+    import App from './components/App.js';
+
+    Vue.createApp(App).mount('#app');
+    </script>
+</body>
+</html>
