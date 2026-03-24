@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ep2, Liaison d'attributs et gestion des événements</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <style>
+        html, body {
+            height: 100%;
+        }
+        body {
+            display: grid;
+            place-items: center;
+        }
+
+        button {
+            font-size: 1.5em;
+            font-style: italic;
+         
+        }
+        .text-green {
+            color: green;
+        }
+
+         .text-red {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div id ="app">
+       <button :class="active ? 'text-red' : 'text-green'" @click="toggle" @click="count++">You clicked me {{count}} times.</button>
+    </div>
+
+    <script>
+        Vue.createApp({
+            data() {
+                return {
+                    // buttonClass: 'text-green',
+                    count: 0,
+                    active: false
+            };
+    },
+
+        methods: {
+                toggle() {
+                    this.active = !this.active;
+                }   
+            }
+        }).mount('#app')
+    </script>
+    
+</body>
+</html>
