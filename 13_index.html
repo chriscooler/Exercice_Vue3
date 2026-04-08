@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <title>Ep 13, Lifecycle Hooks, Fake APIs, and AJAX</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="h-full grid place-items-center bg-gray-600 text-white">
+    <div id="app">
+    </div>
+
+    <script type="module">
+    import Assignments from './components/13_Assignments.js';
+
+    Vue.createApp({
+        components: { Assignments },
+        template: `<assignments></assignments>`,
+    }).mount('#app');
+    </script>
+</body>
+</html>
+
+
+<!-- run 'npm install -g json-server'
+ npx json-server 13_db.json -p 3002  Serves the JSON API
+json-server 13_db.json   
+npx serve . -p 8080   Serves the HTML files -->

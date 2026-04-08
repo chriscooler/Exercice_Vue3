@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Architecture & Workflow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --purple:  #8b5cf6;
+      --cyan:    #06b6d4;
+      --green:   #10b981;
+      --amber:   #f59e0b;
+      --orange:  #f97316;
+      --pink:    #ec4899;
+      --red:     #ef4444;
+      --bg:      #0a0f1e;
+      --card:    rgba(255,255,255,0.04);
+      --border:  rgba(255,255,255,0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: #e2e8f0; margin: 0; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+
+    /* ── Animated mesh background ─────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(139,92,246,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(6,182,212,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 60% 40%, rgba(16,185,129,0.07) 0%, transparent 60%),
+        var(--bg);
+      animation: meshMove 20s ease-in-out infinite alternate;
+    }
+    @keyframes meshMove {
+      0%   { background-position: 0% 0%, 100% 100%, 50% 50%; }
+      100% { background-position: 30% 20%, 70% 80%, 80% 30%; }
+    }
+
+    /* ── Glass card ───────────────────────────────────── */
+    .glass {
+      background: var(--card);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+    }
+
+    /* ── Entrance animation ───────────────────────────── */
+    .fade-up { animation: fadeUp .5s ease both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up:nth-child(1)  { animation-delay: .05s; }
+    .fade-up:nth-child(2)  { animation-delay: .10s; }
+    .fade-up:nth-child(3)  { animation-delay: .15s; }
+    .fade-up:nth-child(4)  { animation-delay: .20s; }
+    .fade-up:nth-child(5)  { animation-delay: .25s; }
+    .fade-up:nth-child(6)  { animation-delay: .30s; }
+
+    /* ── Sidebar nav ──────────────────────────────────── */
+    #sidebar { width: 220px; min-width: 220px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; border-radius: 8px; cursor: pointer;
+      transition: all .2s; color: #94a3b8; font-size: .875rem; font-weight: 500;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+    .nav-item.active { background: rgba(99,102,241,0.18); color: #a5b4fc; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Section titles ───────────────────────────────── */
+    .section-title {
+      font-size: 1.375rem; font-weight: 700; letter-spacing: -.02em;
+      background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: .25rem;
+    }
+    .section-sub { font-size: .875rem; color: #64748b; margin-bottom: 1.5rem; }
+
+    /* ── Architecture nodes ───────────────────────────── */
+    .arch-node {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 10px 14px; border-radius: 10px; cursor: pointer;
+      transition: all .25s; position: relative; min-width: 110px; text-align: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .arch-node:hover { transform: translateY(-3px); }
+    .arch-node .node-icon { font-size: 1.4rem; }
+    .arch-node .node-label { font-size: .7rem; font-weight: 600; color: #e2e8f0; line-height: 1.2; }
+    .arch-node .node-badge { font-size: .6rem; padding: 1px 6px; border-radius: 999px; font-weight: 600; margin-top: 2px; }
+
+    .node-purple { border-color: rgba(139,92,246,.4); box-shadow: 0 0 14px rgba(139,92,246,.15); }
+    .node-purple:hover { box-shadow: 0 0 24px rgba(139,92,246,.35); border-color: rgba(139,92,246,.7); }
+    .node-cyan   { border-color: rgba(6,182,212,.4);   box-shadow: 0 0 14px rgba(6,182,212,.15); }
+    .node-cyan:hover   { box-shadow: 0 0 24px rgba(6,182,212,.35);   border-color: rgba(6,182,212,.7); }
+    .node-green  { border-color: rgba(16,185,129,.4);  box-shadow: 0 0 14px rgba(16,185,129,.15); }
+    .node-green:hover  { box-shadow: 0 0 24px rgba(16,185,129,.35);  border-color: rgba(16,185,129,.7); }
+    .node-amber  { border-color: rgba(245,158,11,.4);  box-shadow: 0 0 14px rgba(245,158,11,.15); }
+    .node-amber:hover  { box-shadow: 0 0 24px rgba(245,158,11,.35);  border-color: rgba(245,158,11,.7); }
+    .node-orange { border-color: rgba(249,115,22,.4);  box-shadow: 0 0 14px rgba(249,115,22,.15); }
+    .node-orange:hover { box-shadow: 0 0 24px rgba(249,115,22,.35);  border-color: rgba(249,115,22,.7); }
+    .node-pink   { border-color: rgba(236,72,153,.4);  box-shadow: 0 0 14px rgba(236,72,153,.15); }
+    .node-pink:hover   { box-shadow: 0 0 24px rgba(236,72,153,.35);  border-color: rgba(236,72,153,.7); }
+    .node-slate  { border-color: rgba(100,116,139,.4); box-shadow: 0 0 14px rgba(100,116,139,.15); }
+
+    /* ── Arrows ───────────────────────────────────────── */
+    .arrow-right::after {
+      content: '→'; margin: 0 6px; color: #475569; font-size: 1rem;
+    }
+    .arrow-down::after {
+      content: '↓'; display: block; text-align: center; color: #475569; margin: 4px 0;
+    }
+    .arch-connector {
+      display: flex; align-items: center; color: #475569; font-size: .75rem; gap: 4px;
+    }
+    .arch-connector svg { flex-shrink: 0; }
+
+    /* ── Step cards (Flow A) ──────────────────────────── */
+    .step-card {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 14px 16px; border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      transition: all .3s;
+    }
+    .step-card.active {
+      background: rgba(99,102,241,0.12);
+      border-color: rgba(99,102,241,.4);
+      box-shadow: 0 0 20px rgba(99,102,241,.15);
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; flex-shrink: 0;
+      background: rgba(99,102,241,.2); color: #a5b4fc;
+      border: 1px solid rgba(99,102,241,.4);
+    }
+    .step-card.active .step-num { background: rgba(99,102,241,.5); color: #fff; }
+
+    /* ── Actor badges ─────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px; font-size: .65rem; font-weight: 600;
+    }
+    .badge-purple { background: rgba(139,92,246,.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,.3); }
+    .badge-cyan   { background: rgba(6,182,212,.2);  color: #67e8f9; border: 1px solid rgba(6,182,212,.3); }
+    .badge-green  { background: rgba(16,185,129,.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,.3); }
+    .badge-amber  { background: rgba(245,158,11,.2); color: #fcd34d; border: 1px solid rgba(245,158,11,.3); }
+    .badge-orange { background: rgba(249,115,22,.2); color: #fdba74; border: 1px solid rgba(249,115,22,.3); }
+    .badge-pink   { background: rgba(236,72,153,.2); color: #f9a8d4; border: 1px solid rgba(236,72,153,.3); }
+    .badge-slate  { background: rgba(100,116,139,.2);color: #94a3b8; border: 1px solid rgba(100,116,139,.3); }
+    .badge-red    { background: rgba(239,68,68,.2);  color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+
+    /* ── Path lanes (Flow B) ──────────────────────────── */
+    .path-lane {
+      border-radius: 10px; padding: 16px 20px; cursor: pointer;
+      border: 1px solid var(--border); transition: all .25s;
+      background: rgba(255,255,255,0.03);
+    }
+    .path-lane:hover { background: rgba(255,255,255,0.06); transform: translateX(4px); }
+    .path-lane.expanded { background: rgba(255,255,255,0.06); }
+    .path-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .path-lane.expanded .path-detail { display: block; }
+
+    /* ── Flip cards (Key Concepts) ────────────────────── */
+    .flip-card {
+      perspective: 900px; height: 130px; cursor: pointer;
+    }
+    .flip-inner {
+      position: relative; width: 100%; height: 100%;
+      transform-style: preserve-3d; transition: transform .5s ease;
+    }
+    .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+    .flip-front, .flip-back {
+      position: absolute; inset: 0; backface-visibility: hidden; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; padding: 16px; text-align: center;
+      border: 1px solid var(--border);
+    }
+    .flip-front { background: rgba(255,255,255,0.04); }
+    .flip-back  { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,.3); transform: rotateY(180deg); }
+
+    /* ── Reference table ──────────────────────────────── */
+    .ref-table th { color: #64748b; font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 10px 16px; }
+    .ref-table td { padding: 11px 16px; font-size: .85rem; border-top: 1px solid var(--border); }
+    .ref-table tr:hover td { background: rgba(255,255,255,0.03); }
+    .ref-table tr.hidden-row { display: none; }
+
+    /* ── Code block ───────────────────────────────────── */
+    .code-block {
+      background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 10px; padding: 16px 20px; overflow-x: auto;
+      font-size: .8rem; line-height: 1.7; color: #a5f3fc;
+    }
+    .code-block .comment { color: #475569; }
+    .code-block .cmd     { color: #86efac; }
+    .code-block .flag    { color: #fde68a; }
+
+    /* ── Filter chips ─────────────────────────────────── */
+    .chip {
+      padding: 5px 14px; border-radius: 999px; font-size: .78rem; font-weight: 600;
+      cursor: pointer; transition: all .2s; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04); color: #64748b;
+    }
+    .chip.active { background: rgba(6,182,212,.2); color: #67e8f9; border-color: rgba(6,182,212,.4); }
+    .chip:hover  { background: rgba(255,255,255,.07); color: #94a3b8; }
+
+    /* ── Play button ──────────────────────────────────── */
+    .play-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 20px; border-radius: 8px; font-size: .85rem; font-weight: 600;
+      background: rgba(99,102,241,.25); color: #a5b4fc;
+      border: 1px solid rgba(99,102,241,.4); cursor: pointer; transition: all .2s;
+    }
+    .play-btn:hover { background: rgba(99,102,241,.4); }
+
+    /* ── Scrollbar ────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+    /* ── Mobile toggle ────────────────────────────────── */
+    #mobile-menu-btn { display: none; }
+    @media (max-width: 768px) {
+      #sidebar { position: fixed; left: -240px; top: 0; bottom: 0; z-index: 50; transition: left .3s; background: #0d1225; border-right: 1px solid var(--border); }
+      #sidebar.open { left: 0; }
+      #mobile-menu-btn { display: flex; }
+    }
+  </style>
+</head>
+<body class="flex min-h-screen">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────── -->
+  <nav id="sidebar" class="p-4 flex flex-col gap-1 sticky top-0 h-screen overflow-y-auto">
+    <div class="mb-6 px-2">
+      <div class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Architecture</div>
+      <div class="text-sm font-bold text-slate-300">System Workflow</div>
+    </div>
+
+    <div class="nav-item active" onclick="goToSection('overview')">
+      <span class="nav-dot" style="background:#06b6d4"></span> Overview
+    </div>
+    <div class="nav-item" onclick="goToSection('flow-a')">
+      <span class="nav-dot" style="background:#8b5cf6"></span> Flow A · Auth
+    </div>
+    <div class="nav-item" onclick="goToSection('flow-b')">
+      <span class="nav-dot" style="background:#10b981"></span> Flow B · API
+    </div>
+    <div class="nav-item" onclick="goToSection('flow-c')">
+      <span class="nav-dot" style="background:#ec4899"></span> Flow C · labd
+    </div>
+    <div class="nav-item" onclick="goToSection('reference')">
+      <span class="nav-dot" style="background:#f59e0b"></span> Reference
+    </div>
+    <div class="nav-item" onclick="goToSection('concepts')">
+      <span class="nav-dot" style="background:#94a3b8"></span> Key Concepts
+    </div>
+
+    <div class="mt-auto pt-4 border-t border-white/5">
+      <div class="text-xs text-slate-600 px-2">v1.0 · 2026</div>
+    </div>
+  </nav>
+
+  <!-- ── Mobile menu button ───────────────────────────────────── -->
+  <button id="mobile-menu-btn" class="fixed top-4 left-4 z-50 p-2 glass rounded-lg" onclick="document.getElementById('sidebar').classList.toggle('open')">
+    <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M3 6h18M3 12h18M3 18h18"/>
+    </svg>
+  </button>
+
+  <!-- ── Main content ─────────────────────────────────────────── -->
+  <main class="flex-1 p-6 md:p-10 max-w-5xl overflow-x-hidden" style="scroll-behavior:smooth">
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 1 — OVERVIEW
+    ═══════════════════════════════════════════════════════════════ -->
+    <section id="overview" class="mb-20">
+      <div class="section-title">Infrastructure Overview</div>
+      <div class="section-sub">Full system topology — hover any node for details</div>
+
+      <!-- Tooltip -->
+      <div id="tooltip" class="hidden fixed z-50 glass px-3 py-2 text-xs text-slate-300 max-w-xs shadow-xl pointer-events-none" style="border-radius:8px"></div>
+
+      <div class="glass p-6 fade-up">
+
+        <!-- Row 1: Frontend -->
+        <div class="flex justify-center mb-4">
+          <div class="arch-node node-slate" data-tip="<b>Frontend</b><br>Vue.js SPA served via Cloudflare CDN. All API calls pass through KrakenD with a JWT.">
+            <span class="node-icon">🖥️</span>
+            <span class="node-label">Frontend</span>
+            <span class="node-badge" style="background:rgba(100,116,139,.2);color:#94a3b8">Vue 3</span>
+          </div>
+        </div>
+        <div class="arrow-down text-center text-slate-500 mb-2 text-sm">↓</div>
+
+        <!-- Row 2: Cloudflare -->
+        <div class="flex justify-center mb-2">
+          <div class="arch-node node-orange" data-tip="<b>Cloudflare</b><br>CDN + DDoS protection. Sits in front of everything. Routes traffic to NGinx ingress inside the cluster.">
+            <span class="node-icon">☁️</span>
+            <span class="node-label">Cloudflare</span>
+            <span class="node-badge" style="background:rgba(249,115,22,.2);color:#fdba74">External</span>
+          </div>
+        </div>
+        <div class="arrow-down text-center text-slate-500 mb-2 text-sm">↓</div>
+
+        <!-- K8s cluster box -->
+        <div class="rounded-xl border border-dashed border-slate-600 p-5 mb-4" style="background:rgba(255,255,255,.02)">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">☸️ Kubernetes Cluster</div>
+
+          <!-- Row 3: NGinx -->
+          <div class="flex justify-center mb-4">
+            <div class="arch-node node-slate" data-tip="<b>NGinx</b><br>Reverse proxy and K8s ingress controller. Routes /auth traffic to Keycloak and all other traffic to KrakenD.">
+              <span class="node-icon">🔀</span>
+              <span class="node-label">NGinx</span>
+              <span class="node-badge" style="background:rgba(100,116,139,.2);color:#94a3b8">Ingress</span>
+            </div>
+          </div>
+
+          <!-- Row 4: Keycloak + KrakenD -->
+          <div class="flex justify-center gap-16 mb-4">
+            <div class="flex flex-col items-center gap-2">
+              <div class="text-xs text-slate-500">↙ /auth</div>
+              <div class="arch-node node-purple" data-tip="<b>Keycloak</b><br>Open-source IAM. Handles OIDC/OAuth2, federates with PSC for healthcare login, issues JWTs.">
+                <span class="node-icon">🔐</span>
+                <span class="node-label">Keycloak</span>
+                <span class="node-badge" style="background:rgba(139,92,246,.2);color:#c4b5fd">Auth</span>
+              </div>
+              <div class="text-xs text-slate-500">↕ PSC</div>
+              <div class="arch-node node-orange" data-tip="<b>PSC — Pro Santé Connect</b><br>French national healthcare identity provider. Keycloak federates with it via OIDC.">
+                <span class="node-icon">🏥</span>
+                <span class="node-label">PSC</span>
+                <span class="node-badge" style="background:rgba(249,115,22,.2);color:#fdba74">External</span>
+              </div>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <div class="text-xs text-slate-500">↘ /api</div>
+              <div class="arch-node node-cyan" data-tip="<b>KrakenD</b><br>High-performance API Gateway. Validates JWT signatures, enforces RBAC, routes to microservices.">
+                <span class="node-icon">🐙</span>
+                <span class="node-label">KrakenD</span>
+                <span class="node-badge" style="background:rgba(6,182,212,.2);color:#67e8f9">Gateway</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 5: Microservices -->
+          <div class="rounded-lg border border-dashed border-slate-700 p-4" style="background:rgba(255,255,255,.01)">
+            <div class="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3">Microservices</div>
+            <div class="flex flex-wrap gap-3 justify-center">
+              <div class="arch-node node-green" data-tip="<b>Server</b><br>Core business logic service. Receives validated requests from KrakenD, queries PostgreSQL for user data and domain logic.">
+                <span class="node-icon">⚙️</span>
+                <span class="node-label">Server</span>
+                <span class="node-badge" style="background:rgba(16,185,129,.2);color:#6ee7b7">K8s</span>
+              </div>
+              <div class="arch-node node-green" data-tip="<b>documentd</b><br>Document management service. Stores/retrieves files on S3 object storage and metadata in PostgreSQL.">
+                <span class="node-icon">📄</span>
+                <span class="node-label">documentd</span>
+                <span class="node-badge" style="background:rgba(16,185,129,.2);color:#6ee7b7">K8s</span>
+              </div>
+              <div class="arch-node node-green" data-tip="<b>audit</b><br>Immutable audit log service. Records every sensitive action to a dedicated PostgreSQL schema for compliance.">
+                <span class="node-icon">📋</span>
+                <span class="node-label">audit</span>
+                <span class="node-badge" style="background:rgba(16,185,129,.2);color:#6ee7b7">K8s</span>
+              </div>
+              <div class="arch-node node-pink" data-tip="<b>labd</b><br>Laboratory / experimental microservice. Handles internal benchmarks and features under development. Local: port 3001.">
+                <span class="node-icon">🧪</span>
+                <span class="node-label">labd</span>
+                <span class="node-badge" style="background:rgba(236,72,153,.2);color:#f9a8d4">K8s · 3001</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OVH Storage -->
+        <div class="rounded-xl border border-dashed border-amber-900/50 p-4" style="background:rgba(245,158,11,.03)">
+          <div class="text-xs font-bold text-amber-700 uppercase tracking-widest mb-3">🗄️ OVH Storage</div>
+          <div class="flex gap-4 justify-center">
+            <div class="arch-node node-amber" data-tip="<b>PostgreSQL</b><br>Primary relational database on OVH. Has 3 schemas: <code>lec</code> (business), <code>search</code>, <code>audit</code> (immutable logs).">
+              <span class="node-icon">🐘</span>
+              <span class="node-label">PostgreSQL</span>
+              <span class="node-badge" style="background:rgba(245,158,11,.2);color:#fcd34d">lec · search · audit</span>
+            </div>
+            <div class="arch-node node-amber" data-tip="<b>S3 Object Storage</b><br>OVH-hosted S3-compatible bucket. Used by documentd for storing files and binary assets.">
+              <span class="node-icon">🗃️</span>
+              <span class="node-label">S3</span>
+              <span class="node-badge" style="background:rgba(245,158,11,.2);color:#fcd34d">Object Storage</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /glass -->
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 2 — FLOW A
+    ═══════════════════════════════════════════════════════════════ -->
+    <section id="flow-a" class="mb-20">
+      <div class="section-title">Flow A — Authentication with PSC</div>
+      <div class="section-sub">Initial login via Pro Santé Connect → JWT issued to the frontend</div>
+
+      <div class="flex gap-3 mb-5 flex-wrap">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()">
+          <span id="playIcon">▶</span> <span id="playLabel">Play Flow</span>
+        </button>
+        <button class="play-btn" style="background:rgba(100,116,139,.15);color:#64748b;border-color:rgba(100,116,139,.2)" onclick="resetPlay()">↺ Reset</button>
+      </div>
+
+      <div class="flex flex-col gap-2" id="steps-container">
+        <!-- Steps injected by JS -->
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 3 — FLOW B
+    ═══════════════════════════════════════════════════════════════ -->
+    <section id="flow-b" class="mb-20">
+      <div class="section-title">Flow B — API Query & Document Access</div>
+      <div class="section-sub">Every request after login — KrakenD routes based on JWT and request type</div>
+
+      <div class="glass p-6 mb-4 fade-up">
+        <!-- User → KrakenD -->
+        <div class="flex items-center gap-3 mb-5">
+          <div class="arch-node node-slate" style="min-width:80px">
+            <span class="node-icon">👤</span>
+            <span class="node-label">User</span>
+          </div>
+          <div class="flex-1 h-px bg-gradient-to-r from-slate-600 to-cyan-600/50 relative">
+            <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-slate-400 whitespace-nowrap">① Query</span>
+          </div>
+          <div class="arch-node node-cyan" style="min-width:100px">
+            <span class="node-icon">🐙</span>
+            <span class="node-label">KrakenD</span>
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 mb-4 text-center">KrakenD checks the JWT and routes to one of three paths ↓</div>
+
+        <!-- Three paths -->
+        <div class="flex flex-col gap-3">
+
+          <div class="path-lane" onclick="togglePath(this)">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="badge badge-green">Path A</span>
+                <span class="text-sm font-medium text-slate-200">JWT valid + data query</span>
+              </div>
+              <span class="text-slate-500 text-sm">→ RBAC Server</span>
+              <span class="text-slate-500">▾</span>
+            </div>
+            <div class="path-detail">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="badge badge-green">⚙️ RBAC Server</span>
+                <span class="text-slate-500">→</span>
+                <span class="badge badge-amber">💾 DB / Cache</span>
+                <span class="text-slate-500">→</span>
+                <span class="badge badge-green">✅ Response</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-2">JWT is valid. The request is forwarded to the RBAC Server which fetches user rights from the database or cache, then returns the data.</p>
+            </div>
+          </div>
+
+          <div class="path-lane" onclick="togglePath(this)">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="badge badge-cyan">Path B</span>
+                <span class="text-sm font-medium text-slate-200">JWT valid + document request</span>
+              </div>
+              <span class="text-slate-500 text-sm">→ documentd</span>
+              <span class="text-slate-500">▾</span>
+            </div>
+            <div class="path-detail">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="badge badge-green">📄 documentd</span>
+                <span class="text-slate-500">→</span>
+                <span class="badge badge-amber">🗃️ S3 Storage</span>
+                <span class="text-slate-500">→</span>
+                <span class="badge badge-green">✅ File / Response</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-2">JWT is valid but request targets a document. documentd retrieves the file from S3 storage and streams it back to the user.</p>
+            </div>
+          </div>
+
+          <div class="path-lane" onclick="togglePath(this)">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="badge badge-red">Path C</span>
+                <span class="text-sm font-medium text-slate-200">JWT missing or expired (cleed)</span>
+              </div>
+              <span class="text-slate-500 text-sm">→ Keycloak re-auth</span>
+              <span class="text-slate-500">▾</span>
+            </div>
+            <div class="path-detail">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="badge badge-purple">🔐 Keycloak OIDC</span>
+                <span class="text-slate-500">→</span>
+                <span class="badge badge-slate">deed (new JWT)</span>
+                <span class="text-slate-500">→</span>
+                <span class="badge badge-cyan">🐙 KrakenD retry</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-2"><b>cleed</b> = re-auth trigger. Keycloak issues a fresh JWT (<b>deed</b>). KrakenD then retries routing the original request.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 4 — FLOW C (labd)
+    ═══════════════════════════════════════════════════════════════ -->
+    <section id="flow-c" class="mb-20">
+      <div class="section-title">Flow C — Lab Service (labd)</div>
+      <div class="section-sub">Experimental microservice — local mock on port 3001</div>
+
+      <!-- Diagram -->
+      <div class="glass p-6 mb-4 fade-up">
+        <div class="flex items-center justify-center gap-4 flex-wrap mb-2">
+          <div class="arch-node node-slate">
+            <span class="node-icon">🖥️</span>
+            <span class="node-label">Frontend</span>
+            <span class="node-badge" style="background:rgba(100,116,139,.2);color:#94a3b8">14_index.html</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-xs text-pink-400/70">GET / POST</span>
+            <span class="text-xl text-pink-500">⇄</span>
+            <span class="text-xs text-slate-600">local dev</span>
+          </div>
+          <div class="arch-node node-pink">
+            <span class="node-icon">🧪</span>
+            <span class="node-label">labd</span>
+            <span class="node-badge" style="background:rgba(236,72,153,.2);color:#f9a8d4">:3001</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-xs text-amber-500/70">queries</span>
+            <span class="text-xl text-amber-500">→</span>
+          </div>
+          <div class="arch-node node-amber">
+            <span class="node-icon">🐘</span>
+            <span class="node-label">PostgreSQL</span>
+            <span class="node-badge" style="background:rgba(245,158,11,.2);color:#fcd34d">OVH</span>
+          </div>
+        </div>
+        <div class="text-center text-xs text-slate-600 mt-2">In production: Frontend → KrakenD (JWT validated) → labd → PostgreSQL</div>
+      </div>
+
+      <!-- Endpoints table -->
+      <div class="glass mb-4 overflow-hidden fade-up">
+        <table class="w-full ref-table">
+          <thead><tr>
+            <th class="text-left">Method</th>
+            <th class="text-left">Endpoint</th>
+            <th class="text-left">Description</th>
+          </tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-green">GET</span></td><td><code class="text-xs text-slate-300">/experiments</code></td><td class="text-slate-400">List all experiments</td></tr>
+            <tr><td><span class="badge badge-green">GET</span></td><td><code class="text-xs text-slate-300">/experiments/:id</code></td><td class="text-slate-400">Get one experiment</td></tr>
+            <tr><td><span class="badge badge-cyan">POST</span></td><td><code class="text-xs text-slate-300">/experiments</code></td><td class="text-slate-400">Create a new experiment</td></tr>
+            <tr><td><span class="badge badge-amber">PATCH</span></td><td><code class="text-xs text-slate-300">/experiments/:id</code></td><td class="text-slate-400">Update experiment status</td></tr>
+            <tr><td><span class="badge badge-red">DELETE</span></td><td><code class="text-xs text-slate-300">/experiments/:id</code></td><td class="text-slate-400">Remove an experiment</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Quick start -->
+      <div class="glass p-5 fade-up">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Quick Start</div>
+        <div class="code-block">
+<span class="comment"># 1. Install dependencies</span>
+<span class="cmd">cd labd</span> <span class="cmd">&amp;&amp; npm install</span>
+
+<span class="comment"># 2a. Express (full CRUD, in-memory)</span>
+<span class="cmd">node server.js</span>
+
+<span class="comment"># 2b. OR json-server (zero-code, file-based)</span>
+<span class="cmd">npx json-server</span> <span class="flag">--watch db.json --port 3001</span>
+
+<span class="comment"># 3. Open the Vue frontend</span>
+<span class="cmd">open 14_index.html</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 5 — REFERENCE
+    ═══════════════════════════════════════════════════════════════ -->
+    <section id="reference" class="mb-20">
+      <div class="section-title">Infrastructure Reference</div>
+      <div class="section-sub">All system components — filter by host environment</div>
+
+      <div class="flex gap-2 flex-wrap mb-4">
+        <button class="chip active" onclick="filterRef('all', this)">All</button>
+        <button class="chip" onclick="filterRef('k8s', this)">☸️ K8s</button>
+        <button class="chip" onclick="filterRef('external', this)">🌐 External</button>
+        <button class="chip" onclick="filterRef('ovh', this)">🗄️ OVH</button>
+      </div>
+
+      <div class="glass overflow-hidden fade-up">
+        <table class="w-full ref-table">
+          <thead><tr>
+            <th class="text-left">Component</th>
+            <th class="text-left">Role</th>
+            <th class="text-left">Host</th>
+          </tr></thead>
+          <tbody id="ref-tbody">
+            <tr data-host="external"><td class="font-semibold text-orange-300">Cloudflare</td><td class="text-slate-400">CDN + DDoS protection</td><td><span class="badge badge-orange">External</span></td></tr>
+            <tr data-host="k8s"><td class="font-semibold text-slate-300">NGinx</td><td class="text-slate-400">Reverse proxy / K8s ingress</td><td><span class="badge badge-slate">K8s</span></td></tr>
+            <tr data-host="k8s"><td class="font-semibold text-purple-300">Keycloak</td><td class="text-slate-400">Auth server — OIDC / OAuth2 / JWT</td><td><span class="badge badge-slate">K8s</span></td></tr>
+            <tr data-host="external"><td class="font-semibold text-orange-300">PSC</td><td class="text-slate-400">Pro Santé Connect — French healthcare SSO</td><td><span class="badge badge-orange">External</span></td></tr>
+            <tr data-host="k8s"><td class="font-semibold text-cyan-300">KrakenD</td><td class="text-slate-400">API Gateway — routing, JWT validation, RBAC</td><td><span class="badge badge-slate">K8s</span></td></tr>
+            <tr data-host="k8s"><td class="font-semibold text-green-300">Server</td><td class="text-slate-400">Core business logic microservice</td><td><span class="badge badge-slate">K8s</span></td></tr>
+            <tr data-host="k8s"><td class="font-semibold text-green-300">documentd</td><td class="text-slate-400">Document management service</td><td><span class="badge badge-slate">K8s</span></td></tr>
+            <tr data-host="k8s"><td class="font-semibold text-green-300">audit</td><td class="text-slate-400">Audit log service</td><td><span class="badge badge-slate">K8s</span></td></tr>
+            <tr data-host="k8s"><td class="font-semibold text-pink-300">labd</td><td class="text-slate-400">Laboratory / experimental microservice</td><td><span class="badge badge-pink">K8s · :3001</span></td></tr>
+            <tr data-host="ovh"><td class="font-semibold text-amber-300">PostgreSQL</td><td class="text-slate-400">Relational DB — lec / search / audit schemas</td><td><span class="badge badge-amber">OVH</span></td></tr>
+            <tr data-host="ovh"><td class="font-semibold text-amber-300">S3</td><td class="text-slate-400">Object / file storage</td><td><span class="badge badge-amber">OVH</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 6 — KEY CONCEPTS
+    ═══════════════════════════════════════════════════════════════ -->
+    <section id="concepts" class="mb-20">
+      <div class="section-title">Key Concepts</div>
+      <div class="section-sub">Click any card to reveal the definition</div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="concepts-grid">
+        <!-- Cards injected by JS -->
+      </div>
+    </section>
+
+  </main><!-- /main -->
+
+  <script>
+    // ── Data ─────────────────────────────────────────────────────
+
+    const STEPS = [
+      { num:'①', from:'Frontend',  to:'Keycloak',  badge_from:'badge-slate',  badge_to:'badge-purple', action:'Auth request (redirect to Keycloak login page)' },
+      { num:'②', from:'Keycloak',  to:'PSC',        badge_from:'badge-purple', badge_to:'badge-orange', action:'Identity federation — PSC login (Pro Santé Connect)' },
+      { num:'③', from:'Keycloak',  to:'Frontend',   badge_from:'badge-purple', badge_to:'badge-slate',  action:'JWT returned to frontend on successful login' },
+      { num:'④', from:'Keycloak',  to:'Keycloak',   badge_from:'badge-purple', badge_to:'badge-purple', action:'Internal check / sync / validate token' },
+      { num:'⑤', from:'Keycloak',  to:'Frontend',   badge_from:'badge-purple', badge_to:'badge-slate',  action:'Token confirmed — user session ready, stored client-side' },
+      { num:'⑥', from:'Frontend',  to:'KrakenD',    badge_from:'badge-slate',  badge_to:'badge-cyan',   action:'API request + JWT in Authorization header' },
+      { num:'⑦', from:'KrakenD',   to:'KrakenD',    badge_from:'badge-cyan',   badge_to:'badge-cyan',   action:'Validate JWT signature and expiry' },
+      { num:'⑧', from:'KrakenD',   to:'Server',     badge_from:'badge-cyan',   badge_to:'badge-green',  action:'Forward validated request to business logic server' },
+      { num:'⑨', from:'Server',    to:'PostgreSQL',  badge_from:'badge-green',  badge_to:'badge-amber',  action:'Query user info from database' },
+      { num:'⑩', from:'PostgreSQL',to:'Server',     badge_from:'badge-amber',  badge_to:'badge-green',  action:'Return user info + access rights' },
+      { num:'⑪', from:'Server',    to:'KrakenD',    badge_from:'badge-green',  badge_to:'badge-cyan',   action:'Pass enriched user context to gateway' },
+      { num:'✅', from:'KrakenD',   to:'Frontend',   badge_from:'badge-cyan',   badge_to:'badge-slate',  action:'Final Réponse — data + user context returned to UI' },
+    ];
+
+    const CONCEPTS = [
+      { term:'JWT',      def:'JSON Web Token — signed token carrying user identity and roles, used to authenticate every API call without server sessions.' },
+      { term:'PSC',      def:'Pro Santé Connect — national French healthcare identity provider. Doctors and health workers log in via PSC.' },
+      { term:'OIDC',     def:'OpenID Connect — identity layer on top of OAuth2. Keycloak implements it to issue JWTs after PSC authentication.' },
+      { term:'RBAC',     def:'Role-Based Access Control — controls which resources a user can access based on roles stored in the database.' },
+      { term:'KrakenD',  def:'High-performance open-source API Gateway. Validates JWTs, rate-limits, and routes to the correct microservice.' },
+      { term:'Keycloak', def:'Open-source Identity & Access Management server. Handles login, token issuance, and federation with PSC.' },
+      { term:'cleed',    def:'Re-authentication trigger. Fired by KrakenD when a JWT is missing or expired — sends the user back to Keycloak.' },
+      { term:'deed',     def:'The renewed JWT issued by Keycloak after a cleed re-auth flow. KrakenD uses it to retry the original request.' },
+      { term:'labd',     def:'Laboratory microservice. Experimental service for internal benchmarking and features under development. Runs on port 3001 locally.' },
+    ];
+
+    // ── Render steps ─────────────────────────────────────────────
+    const stepsEl = document.getElementById('steps-container');
+    STEPS.forEach((s, i) => {
+      stepsEl.innerHTML += `
+        <div class="step-card fade-up" id="step-${i}">
+          <div class="step-num">${s.num}</div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <span class="badge ${s.badge_from}">${s.from}</span>
+              <span class="text-slate-600 text-xs">→</span>
+              <span class="badge ${s.badge_to}">${s.to}</span>
+            </div>
+            <div class="text-sm text-slate-300">${s.action}</div>
+          </div>
+        </div>`;
+    });
+
+    // ── Render concept cards ──────────────────────────────────────
+    const grid = document.getElementById('concepts-grid');
+    CONCEPTS.forEach(c => {
+      grid.innerHTML += `
+        <div class="flip-card" onclick="this.classList.toggle('flipped')">
+          <div class="flip-inner">
+            <div class="flip-front">
+              <span class="text-lg font-bold text-slate-200">${c.term}</span>
+            </div>
+            <div class="flip-back">
+              <span class="text-xs text-indigo-200 leading-relaxed">${c.def}</span>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    // ── Play / pause stepper ──────────────────────────────────────
+    let playTimer = null, currentStep = -1;
+
+    function activateStep(i) {
+      document.querySelectorAll('.step-card').forEach((el, j) => {
+        el.classList.toggle('active', j === i);
+        if (j === i) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+
+    function togglePlay() {
+      if (playTimer) { clearInterval(playTimer); playTimer = null; setPlayState(false); return; }
+      if (currentStep >= STEPS.length - 1) resetPlay();
+      setPlayState(true);
+      playTimer = setInterval(() => {
+        currentStep++;
+        if (currentStep >= STEPS.length) {
+          clearInterval(playTimer); playTimer = null;
+          setPlayState(false); return;
+        }
+        activateStep(currentStep);
+      }, 700);
+    }
+
+    function resetPlay() {
+      clearInterval(playTimer); playTimer = null;
+      currentStep = -1;
+      document.querySelectorAll('.step-card').forEach(el => el.classList.remove('active'));
+      setPlayState(false);
+    }
+
+    function setPlayState(playing) {
+      document.getElementById('playIcon').textContent  = playing ? '⏸' : '▶';
+      document.getElementById('playLabel').textContent = playing ? 'Pause' : 'Play Flow';
+    }
+
+    // ── Path toggle ───────────────────────────────────────────────
+    function togglePath(el) { el.classList.toggle('expanded'); }
+
+    // ── Reference filter ──────────────────────────────────────────
+    function filterRef(type, btn) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#ref-tbody tr').forEach(row => {
+        row.classList.toggle('hidden-row',
+          type !== 'all' && row.dataset.host !== type);
+      });
+    }
+
+    // ── Tooltip ───────────────────────────────────────────────────
+    const tooltip = document.getElementById('tooltip');
+    document.querySelectorAll('[data-tip]').forEach(el => {
+      el.addEventListener('mouseenter', e => {
+        tooltip.innerHTML = e.currentTarget.dataset.tip;
+        tooltip.classList.remove('hidden');
+      });
+      el.addEventListener('mousemove', e => {
+        tooltip.style.left = (e.clientX + 14) + 'px';
+        tooltip.style.top  = (e.clientY - 8)  + 'px';
+      });
+      el.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+    });
+
+    // ── Scrollspy ─────────────────────────────────────────────────
+    const sections = ['overview','flow-a','flow-b','flow-c','reference','concepts'];
+    const navItems = document.querySelectorAll('.nav-item');
+
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const idx = sections.indexOf(e.target.id);
+          navItems.forEach((n, i) => n.classList.toggle('active', i === idx));
+        }
+      });
+    }, { threshold: 0.3 });
+
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) obs.observe(el);
+    });
+
+    // ── Scroll to section ─────────────────────────────────────────
+    function goToSection(id) {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('sidebar').classList.remove('open');
+    }
+  </script>
+</body>
+</html>

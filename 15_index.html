@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <title>Ep 15, Named Slots</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="h-full grid place-items-center bg-gray-600 text-white">
+    <div id="app">
+    </div>
+
+    <script type="module">
+    import App from './components/15_App.js';
+
+    Vue.createApp({
+        components: { App },
+        template: `<app></app>`,
+    }).mount('#app');
+    </script>
+</body>
+</html>
